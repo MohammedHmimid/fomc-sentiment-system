@@ -23,4 +23,8 @@ services:
       AUDIO_URL: http://audio:8002
       VISION_URL: http://vision:8003
       FUSION_URL: http://fusion:8004
+    # read-only access to the event list and aggregated results for the test UI
+    volumes:
+      - ./data/events.json:/app/data/events.json:ro
+      - ./results:/app/results:ro
     depends_on: [nlp, audio, vision, fusion]

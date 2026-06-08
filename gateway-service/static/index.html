@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FOMC · Sentiment Multimodal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Hanken+Grotesk:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b0c10; --surface:#14161d; --surface-2:#1c1f28; --line:#2a2e3a;
+    --ink:#ece6da; --muted:#8c8779; --gold:#d9a441;
+    --pos:#5fb98f; --neg:#e0655a; --neu:#b9b3a4;
+    --shadow:0 18px 50px -20px rgba(0,0,0,.8);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(217,164,65,.10), transparent 60%),
+      radial-gradient(900px 500px at -10% 110%, rgba(95,185,143,.07), transparent 55%),
+      var(--bg);
+    color:var(--ink); font-family:"Hanken Grotesk",sans-serif; line-height:1.5;
+    min-height:100vh; -webkit-font-smoothing:antialiased;
+  }
+  body::before{ /* grain */
+    content:""; position:fixed; inset:0; pointer-events:none; opacity:.035; z-index:0;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .wrap{max-width:920px; margin:0 auto; padding:48px 24px 80px; position:relative; z-index:1}
+
+  header{margin-bottom:34px; animation:rise .7s ease both}
+  .kicker{font-family:"IBM Plex Mono",monospace; font-size:12px; letter-spacing:.32em;
+    text-transform:uppercase; color:var(--gold)}
+  h1{font-family:"Fraunces",serif; font-weight:900; font-size:clamp(34px,6vw,60px);
+    line-height:1.02; margin:.18em 0 .1em; letter-spacing:-.01em}
+  h1 em{font-style:italic; color:var(--gold)}
+  .sub{color:var(--muted); max-width:62ch; font-size:15px}
+
+  nav.tabs{display:flex; gap:6px; margin:30px 0 22px; border-bottom:1px solid var(--line)}
+  .tab{appearance:none; background:none; border:0; color:var(--muted); cursor:pointer;
+    font-family:"IBM Plex Mono",monospace; font-size:13px; letter-spacing:.04em;
+    padding:12px 16px; border-bottom:2px solid transparent; transition:.2s; white-space:nowrap}
+  .tab:hover{color:var(--ink)}
+  .tab.active{color:var(--ink); border-bottom-color:var(--gold)}
+
+  .panel{display:none; animation:rise .5s ease both}
+  .panel.active{display:block}
+
+  .card{background:linear-gradient(180deg,var(--surface),#101218);
+    border:1px solid var(--line); border-radius:16px; padding:24px; box-shadow:var(--shadow)}
+  label.fld{display:block; font-family:"IBM Plex Mono",monospace; font-size:11px;
+    letter-spacing:.22em; text-transform:uppercase; color:var(--muted); margin-bottom:9px}
+  select,textarea{width:100%; background:var(--surface-2); color:var(--ink);
+    border:1px solid var(--line); border-radius:10px; padding:13px 14px; font:inherit; outline:none}
+  select:focus,textarea:focus{border-color:var(--gold)}
+  textarea{min-height:150px; resize:vertical; line-height:1.6}
+  .row{display:flex; gap:14px; align-items:flex-end; flex-wrap:wrap}
+  .row > div{flex:1; min-width:200px}
+
+  button.go{appearance:none; cursor:pointer; border:0; border-radius:10px;
+    background:var(--gold); color:#1a1407; font-weight:600; font-family:"IBM Plex Mono",monospace;
+    letter-spacing:.04em; padding:13px 22px; transition:.18s; font-size:14px}
+  button.go:hover{transform:translateY(-1px); box-shadow:0 8px 20px -8px var(--gold)}
+  button.go:disabled{opacity:.5; cursor:wait; transform:none; box-shadow:none}
+
+  .hint{color:var(--muted); font-size:12.5px; margin-top:12px}
+  .spinner{display:inline-block; width:15px; height:15px; border:2px solid rgba(255,255,255,.25);
+    border-top-color:#1a1407; border-radius:50%; animation:spin .8s linear infinite; vertical-align:-2px; margin-right:8px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* result blocks */
+  .out{margin-top:24px; display:none}
+  .out.show{display:block; animation:rise .45s ease both}
+  .fusion{display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; margin-bottom:6px}
+  .fusion .big{font-family:"Fraunces",serif; font-weight:900; font-size:46px; line-height:1}
+  .fusion .lab{font-family:"IBM Plex Mono",monospace; font-size:13px; letter-spacing:.12em;
+    text-transform:uppercase; padding:4px 10px; border-radius:999px; border:1px solid var(--line)}
+  .meta{color:var(--muted); font-size:13px; font-family:"IBM Plex Mono",monospace}
+
+  /* valence gauge */
+  .gauge{position:relative; height:8px; border-radius:999px; margin:14px 0 4px;
+    background:linear-gradient(90deg,var(--neg),#4a4d57 50%,var(--pos))}
+  .gauge .pin{position:absolute; top:50%; width:14px; height:14px; border-radius:50%;
+    background:var(--ink); border:2px solid var(--bg); transform:translate(-50%,-50%);
+    box-shadow:0 2px 8px rgba(0,0,0,.6); transition:left .6s cubic-bezier(.2,.8,.2,1)}
+  .scale{display:flex; justify-content:space-between; font-family:"IBM Plex Mono",monospace;
+    font-size:10.5px; color:var(--muted)}
+
+  .channels{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; margin-top:22px}
+  .ch{background:var(--surface-2); border:1px solid var(--line); border-radius:12px; padding:16px}
+  .ch h4{margin:0 0 2px; font-family:"IBM Plex Mono",monospace; font-size:12px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--muted); display:flex; justify-content:space-between; align-items:center}
+  .ch .val{font-family:"Fraunces",serif; font-weight:600; font-size:30px; line-height:1.1}
+  .badge{font-family:"IBM Plex Mono",monospace; font-size:10px; padding:2px 7px; border-radius:999px}
+  .badge.ok{color:var(--pos); border:1px solid color-mix(in srgb,var(--pos),transparent 60%)}
+  .badge.ko{color:var(--neg); border:1px solid color-mix(in srgb,var(--neg),transparent 60%)}
+  .chip{display:inline-block; font-family:"IBM Plex Mono",monospace; font-size:12px;
+    padding:5px 11px; border-radius:999px; background:var(--surface-2); border:1px solid var(--line); margin-top:14px}
+
+  table{width:100%; border-collapse:collapse; margin-top:6px; font-family:"IBM Plex Mono",monospace; font-size:13px}
+  th,td{text-align:right; padding:9px 10px; border-bottom:1px solid var(--line)}
+  th:first-child,td:first-child{text-align:left}
+  thead th{color:var(--muted); font-weight:500; letter-spacing:.06em; font-size:11px; text-transform:uppercase}
+  .resimg{width:100%; border-radius:12px; border:1px solid var(--line); margin-top:18px; background:#fff}
+  .pos{color:var(--pos)} .neg{color:var(--neg)} .neu{color:var(--neu)}
+  .err{color:var(--neg); font-family:"IBM Plex Mono",monospace; font-size:13px; margin-top:14px}
+  footer{margin-top:40px; color:var(--muted); font-size:12px; font-family:"IBM Plex Mono",monospace}
+  @keyframes rise{from{opacity:0; transform:translateY(12px)}to{opacity:1; transform:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="kicker">Federal Reserve · FOMC</div>
+    <h1>La voix de Powell <em>bouge-t-elle</em> les marchés&nbsp;?</h1>
+    <p class="sub">Interface de test du système réparti : texte (FinBERT), audio (Wav2Vec2) et
+      vidéo (DeepFace) fusionnés, comparés à la variation du S&amp;P&nbsp;500. Score de valence sur
+      l'axe −1 (négatif) … +1 (positif).</p>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="event">Analyser un événement</button>
+    <button class="tab" data-tab="text">Texte libre</button>
+    <button class="tab" data-tab="corr">Corrélations</button>
+  </nav>
+
+  <!-- EVENT -->
+  <section class="panel active" id="panel-event">
+    <div class="card">
+      <div class="row">
+        <div>
+          <label class="fld" for="evt">Conférence FOMC</label>
+          <select id="evt"><option>chargement…</option></select>
+        </div>
+        <button class="go" id="goEvt">Analyser</button>
+      </div>
+      <p class="hint">⏱️ L'analyse fait tourner les 3 modèles en direct (CPU) — comptez
+        <strong>1 à 4 minutes</strong> par événement, plus au premier lancement (téléchargement des modèles).</p>
+      <div class="out" id="evtOut">
+        <div class="fusion">
+          <span class="big" id="fScore">—</span>
+          <span class="lab" id="fLabel">fusion</span>
+          <span class="chip" id="fMarket"></span>
+        </div>
+        <div class="gauge"><div class="pin" id="fPin" style="left:50%"></div></div>
+        <div class="scale"><span>−1 · négatif</span><span>0</span><span>+1 · positif</span></div>
+        <div class="channels" id="chans"></div>
+        <div class="err" id="evtErr"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TEXT -->
+  <section class="panel" id="panel-text">
+    <div class="card">
+      <label class="fld" for="txt">Texte à analyser (FinBERT)</label>
+      <textarea id="txt" placeholder="Collez ici un extrait de discours, une phrase de Powell, un titre de presse financière…">Inflation has moderated somewhat but remains elevated; the Committee is strongly committed to returning inflation to its 2 percent objective.</textarea>
+      <div style="margin-top:14px"><button class="go" id="goTxt">Analyser le texte</button></div>
+      <div class="out" id="txtOut">
+        <div class="fusion">
+          <span class="big" id="tScore">—</span>
+          <span class="lab" id="tLabel">nlp</span>
+        </div>
+        <div class="gauge"><div class="pin" id="tPin" style="left:50%"></div></div>
+        <div class="scale"><span>−1 · négatif</span><span>0</span><span>+1 · positif</span></div>
+        <div class="err" id="txtErr"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CORR -->
+  <section class="panel" id="panel-corr">
+    <div class="card">
+      <div class="row">
+        <div><label class="fld">Résultats agrégés</label>
+          <span class="meta">scores &amp; corrélations sur tous les événements (dossier results/)</span></div>
+        <button class="go" id="goCorr">Charger</button>
+      </div>
+      <div class="out" id="corrOut">
+        <div id="corrTables"></div>
+        <img class="resimg" id="corrImg" alt="corrélations" style="display:none">
+        <div class="err" id="corrErr"></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>5 services REST · gateway:8000 · nlp:8001 · audio:8002 · vision:8003 · fusion:8004</footer>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const fmt = x => (x===null||x===undefined||x==="") ? "—" : Number(x).toFixed(3);
+const cls = v => v>=0.15 ? "pos" : v<=-0.15 ? "neg" : "neu";
+const pinPos = v => `${Math.max(0,Math.min(1,(Number(v)+1)/2))*100}%`;
+
+// tabs
+document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
+  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+  document.querySelectorAll(".panel").forEach(x=>x.classList.remove("active"));
+  t.classList.add("active");
+  $("#panel-"+t.dataset.tab).classList.add("active");
+});
+
+// load events
+fetch("/events").then(r=>r.json()).then(evs=>{
+  const sel=$("#evt");
+  if(!evs.length){ sel.innerHTML='<option value="">aucun événement</option>'; return; }
+  sel.innerHTML = evs.map(e=>`<option value="${e.id}">${e.id}</option>`).join("");
+}).catch(()=>{ $("#evt").innerHTML='<option value="">erreur /events</option>'; });
+
+// analyze event
+$("#goEvt").onclick = async () => {
+  const id=$("#evt").value, btn=$("#goEvt");
+  if(!id) return;
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Analyse…';
+  $("#evtErr").textContent=""; $("#evtOut").classList.remove("show");
+  try{
+    const res = await (await fetch("/analyze",{method:"POST",headers:{"content-type":"application/json"},
+      body:JSON.stringify({event_id:id})})).json();
+    const v = res.combined_score;
+    $("#fScore").innerHTML = `<span class="${cls(v)}">${fmt(v)}</span>`;
+    $("#fLabel").textContent = res.label || "fusion";
+    $("#fPin").style.left = pinPos(v);
+    const chans = (res.channels||[]).map(c=>`
+      <div class="ch">
+        <h4>${c.channel}<span class="badge ${c.ok?'ok':'ko'}">${c.ok?'ok':'échec'}</span></h4>
+        <div class="val ${cls(c.score)}">${c.ok?fmt(c.score):'—'}</div>
+        <div class="meta">${c.ok?(c.label||''):(c.error||'').slice(0,40)}</div>
+      </div>`).join("");
+    $("#chans").innerHTML = chans;
+    $("#fMarket").textContent = "marché S&P 500 : (voir onglet Corrélations)";
+    $("#evtOut").classList.add("show");
+  }catch(e){ $("#evtErr").textContent="Erreur : "+e+" — les services sont-ils démarrés (run_all.py) ?";
+    $("#evtOut").classList.add("show"); }
+  finally{ btn.disabled=false; btn.textContent="Analyser"; }
+};
+
+// analyze free text
+$("#goTxt").onclick = async () => {
+  const text=$("#txt").value.trim(), btn=$("#goTxt");
+  if(!text) return;
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Analyse…';
+  $("#txtErr").textContent=""; $("#txtOut").classList.remove("show");
+  try{
+    const res = await (await fetch("/analyze_text",{method:"POST",headers:{"content-type":"application/json"},
+      body:JSON.stringify({text})})).json();
+    if(!res.ok){ throw new Error(res.error||"échec"); }
+    $("#tScore").innerHTML = `<span class="${cls(res.score)}">${fmt(res.score)}</span>`;
+    $("#tLabel").textContent = res.label || "nlp";
+    $("#tPin").style.left = pinPos(res.score);
+    $("#txtOut").classList.add("show");
+  }catch(e){ $("#txtErr").textContent="Erreur : "+e; $("#txtOut").classList.add("show"); }
+  finally{ btn.disabled=false; btn.textContent="Analyser le texte"; }
+};
+
+// correlations
+$("#goCorr").onclick = async () => {
+  const btn=$("#goCorr"); btn.disabled=true; btn.innerHTML='<span class="spinner"></span>…';
+  $("#corrErr").textContent=""; $("#corrTables").innerHTML=""; $("#corrImg").style.display="none";
+  try{
+    const r = await (await fetch("/results")).json();
+    if(!r.available){ $("#corrErr").textContent="Aucun résultat. Lancez le pipeline : prepare_data.py → run_all.py → run_report.py."; $("#corrOut").classList.add("show"); return; }
+    const chs=["nlp","audio","vision","fusion"];
+    const scoreRows = r.scores.map(s=>`<tr><td>${s.event}</td>${chs.map(c=>`<td class="${cls(s[c])}">${fmt(s[c])}</td>`).join("")}<td>${fmt(s.market)}</td></tr>`).join("");
+    const corrRows = chs.map(c=>`<tr><td>${c}</td><td class="${cls(r.correlations[c])}">${fmt(r.correlations[c])}</td></tr>`).join("");
+    $("#corrTables").innerHTML = `
+      <table><thead><tr><th>événement</th><th>nlp</th><th>audio</th><th>vision</th><th>fusion</th><th>marché %</th></tr></thead><tbody>${scoreRows}</tbody></table>
+      <table style="margin-top:22px"><thead><tr><th>canal</th><th>corrélation / marché</th></tr></thead><tbody>${corrRows}</tbody></table>`;
+    if(r.has_image){ const img=$("#corrImg"); img.src="/results/correlations.png?"+Date.now(); img.style.display="block"; }
+    $("#corrOut").classList.add("show");
+  }catch(e){ $("#corrErr").textContent="Erreur : "+e; $("#corrOut").classList.add("show"); }
+  finally{ btn.disabled=false; btn.textContent="Charger"; }
+};
+</script>
+</body>
+</html>

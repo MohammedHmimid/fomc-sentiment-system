@@ -56,6 +56,19 @@ python run_all.py &
 
 Le GPU est détecté automatiquement (`shared/device.py`) : `cuda` si disponible, sinon `cpu`.
 
+## Interface de test
+
+Une fois les services démarrés (`docker compose up` ou `python run_all.py`), ouvrir
+**http://localhost:8000/** dans un navigateur. La page (servie par la gateway) permet de :
+
+- **Analyser un événement** — choisir une conférence FOMC et lancer l'analyse multimodale en direct ;
+  jauge de fusion + score de chaque canal (nlp / audio / vidéo) avec statut ok/échec.
+- **Texte libre** — coller un texte et obtenir instantanément le score NLP (FinBERT).
+- **Corrélations** — afficher la table des scores et le graphique sur tous les événements (`results/`).
+
+Endpoints correspondants : `GET /` (UI), `GET /events`, `POST /analyze`, `POST /analyze_text`,
+`GET /results`, `GET /results/correlations.png`.
+
 ## Tests
 
 ```bash

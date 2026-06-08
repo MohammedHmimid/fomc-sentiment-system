@@ -53,9 +53,25 @@ class AnalyzeRequest(BaseModel):
     event_id: str
 
 
+class TextRequest(BaseModel):
+    text: str
+
+
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "nlp"}
+
+
+@app.post("/score_text")
+def score_text_endpoint(req: TextRequest):
+    """Score un texte libre (sans événement pré-préparé)."""
+    try:
+        valence, label, raw = score_text(req.text)
+        return ChannelScore(event_id="(texte libre)", channel="nlp", score=valence,
+                            label=label, raw=raw, ok=True).model_dump()
+    except Exception as e:
+        return ChannelScore(event_id="(texte libre)", channel="nlp", score=0.0,
+                            label="neutral", raw={}, ok=False, error=str(e)).model_dump()
 
 
 @app.post("/analyze")

@@ -91,3 +91,26 @@ def test_vision_degrades_gracefully_on_no_face(monkeypatch, tmp_path):
     body = TestClient(main.app).post("/analyze", json={"event_id": "2023-03-22"}).json()
     assert body["ok"] is False
     assert "no face" in body["error"]
+
+
+def test_nlp_score_text_endpoint(monkeypatch):
+    main = _load_main("nlp-service")
+    monkeypatch.setattr(main, "score_text", lambda t: (0.6, "positive", {"n_chunks": 1}))
+    body = TestClient(main.app).post("/score_text", json={"text": "rates steady"}).json()
+    assert body["channel"] == "nlp"
+    assert body["score"] == 0.6
+    assert body["ok"] is True
+
+
+def test_gateway_events_and_results_endpoints(monkeypatch, tmp_path):
+    import json
+    main = _load_main("gateway-service")
+    events_file = tmp_path / "events.json"
+    events_file.write_text(json.dumps([{"id": "2023-03-22"}, {"id": "2023-05-03"}]))
+    monkeypatch.setattr(main, "EVENTS_FILE", events_file)
+    monkeypatch.setattr(main, "RESULTS_DIR", tmp_path / "results")  # empty -> unavailable
+
+    client = TestClient(main.app)
+    assert client.get("/health").json()["service"] == "gateway"
+    assert [e["id"] for e in client.get("/events").json()] == ["2023-03-22", "2023-05-03"]
+    assert client.get("/results").json()["available"] is False
