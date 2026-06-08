@@ -25,6 +25,7 @@ def test_combine_weighted_average():
     # 0.5*1 + 0.3*0 + 0.2*-1 = 0.3 ; total weight 1.0
     assert abs(res.combined_score - 0.3) < 1e-9
     assert res.channels_used == ["nlp", "audio", "vision"]
+    assert res.label == "positive"
 
 
 def test_failed_channel_is_excluded_and_weights_renormalize():
@@ -42,4 +43,11 @@ def test_all_failed_returns_neutral():
     res = fusion.combine_scores("e", chans)
     assert res.combined_score == 0.0
     assert res.label == "neutral"
+    assert res.channels_used == []
+
+
+def test_explicit_empty_weights_returns_neutral():
+    fusion = _load_fusion()
+    res = fusion.combine_scores("e", [_cs("nlp", 1.0)], weights={})
+    assert res.combined_score == 0.0
     assert res.channels_used == []
