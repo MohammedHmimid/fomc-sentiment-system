@@ -1,37 +1,72 @@
-# FOMC Multimodal Sentiment — Distributed System
+# Sentiment multimodal FOMC — Système réparti
 
-Analyzes FOMC press conferences via text (FinBERT), audio (Wav2Vec2), and face (DeepFace),
-fuses the three signals, and compares each against S&P 500 moves.
+La voix de Powell influence-t-elle les marchés ? Ce projet analyse les conférences de presse
+du **FOMC** (Réserve fédérale américaine) selon trois canaux indépendants — **texte** (FinBERT),
+**audio** (Wav2Vec2) et **vidéo** (DeepFace) — fusionne les trois signaux, puis compare chaque
+canal et leur fusion à la variation du **S&P 500** après chaque conférence.
 
-## Architecture
-5 FastAPI services over REST: gateway (8000) orchestrates nlp (8001), audio (8002),
-vision (8003) in parallel, then fusion (8004) combines the scores. See `docker-compose.yml`.
+C'est un projet de **systèmes répartis** : 5 microservices FastAPI communiquant en REST,
+orchestrés par une *gateway* et déployables via Docker Compose (ou en local/Colab).
 
-## Honest scope
-Sample is small (3–5 events). Correlations are **illustrative, not statistically significant**.
-Add events by appending to `data/events.json` — no code changes.
+📄 Documentation détaillée : [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) ·
+[`docs/GUIDE.md`](docs/GUIDE.md) (guide de l'équipe)
 
-## Run (local, Docker)
+## Architecture en bref
+
+```
+                         ┌──────────────────┐
+   client / notebook  →  │  gateway  (8000) │  orchestrateur
+                         └───┬────┬────┬─────┘
+              POST /analyze  │    │    │
+          ┌──────────────────┘    │    └──────────────────┐
+          ▼              ▼         ▼                        ▼
+     nlp (8001)    audio (8002)  vision (8003)       fusion (8004)
+     FinBERT       Wav2Vec2      DeepFace            combine les scores
+     (texte)       (émotion voix) (émotion visage)   → signal de marché
+```
+
+La gateway interroge les trois canaux **en parallèle**, transmet leurs scores à `fusion`, et
+renvoie le score combiné. Chaque service détecte automatiquement le GPU (`cuda`) ou le CPU.
+
+## Périmètre honnête
+
+L'échantillon est volontairement petit (3 à 5 événements, le plus simple à constituer). Les
+corrélations sont **illustratives, non significatives statistiquement**. Pour ajouter des
+événements : éditer `data/events.json` (aucun changement de code), puis relancer la préparation.
+
+## Lancer en local (Docker)
+
 ```bash
 pip install -r data/requirements.txt
-python data/prepare_data.py            # download + extract data
+python data/prepare_data.py            # télécharge vidéos/audio/transcriptions + données marché
 docker compose up --build
 curl -X POST localhost:8000/analyze -H 'content-type: application/json' -d '{"event_id":"2023-03-22"}'
 ```
 
-## Run (Colab, GPU, no Docker)
+## Lancer sur Colab (GPU, sans Docker)
+
 ```bash
 pip install -r nlp-service/requirements.txt -r audio-service/requirements.txt \
             -r vision-service/requirements.txt -r gateway-service/requirements.txt \
             -r fusion-service/requirements.txt -r data/requirements.txt
 python data/prepare_data.py
 python run_all.py &
-# then run report.ipynb
+# puis exécuter report.ipynb
 ```
-GPU is auto-detected (`shared/device.py`); models use CUDA when available, CPU otherwise.
+
+Le GPU est détecté automatiquement (`shared/device.py`) : `cuda` si disponible, sinon `cpu`.
 
 ## Tests
+
 ```bash
 pip install -r requirements-dev.txt
-pytest -q
+python -m pytest -q
 ```
+
+Les tests n'exigent aucun modèle lourd : les appels FinBERT/Wav2Vec2/DeepFace et HTTP sont
+simulés. Les modèles réels ne tournent que lors de l'exécution end-to-end (cf. `docs/GUIDE.md`).
+
+## Rapport
+
+`report.ipynb` exécute le pipeline sur tous les événements et produit la table de corrélation
+et les nuages de points (`report_correlations.png`). La logique d'analyse est dans `analysis.py`.
