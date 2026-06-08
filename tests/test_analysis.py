@@ -1,7 +1,7 @@
 """Tests de la couche analyse/visualisation (analysis.py)."""
 import pandas as pd
 
-from analysis import correlation_table, plot_correlations
+from analysis import correlation_table, plot_correlations, save_results
 
 
 def _sample_df():
@@ -36,3 +36,11 @@ def test_correlation_table_ignores_missing_channel():
     table = correlation_table(df)
     assert "vision" not in table.index
     assert "fusion" in table.index
+
+
+def test_save_results_writes_all_artifacts(tmp_path):
+    out = save_results(_sample_df(), results_dir=tmp_path)
+    assert (out / "scores.csv").exists()
+    assert (out / "correlations.csv").exists()
+    assert (out / "correlations.png").exists()
+    assert (out / "correlations.png").stat().st_size > 0

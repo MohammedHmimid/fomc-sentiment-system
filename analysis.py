@@ -4,12 +4,17 @@ Logique partagée entre `report.ipynb` et les tests. Les fonctions prennent un
 DataFrame avec une colonne par canal (`nlp`, `audio`, `vision`, `fusion`) plus une
 colonne `market` (variation % du S&P 500), et ne dépendent d'aucun service réseau.
 """
+from pathlib import Path
+
 import matplotlib
 matplotlib.use("Agg")  # backend headless : fonctionne sans écran (CI, Colab, tests)
 import matplotlib.pyplot as plt
 import pandas as pd
 
 CHANNELS = ["nlp", "audio", "vision", "fusion"]
+
+# Dossier où tous les résultats générés sont écrits (à la racine du dépôt par défaut).
+RESULTS_DIR = Path(__file__).resolve().parent / "results"
 
 
 def correlation_table(df, channels=CHANNELS):
@@ -41,3 +46,19 @@ def plot_correlations(df, out_path, channels=CHANNELS):
     fig.savefig(out_path, dpi=120)
     plt.close(fig)
     return out_path
+
+
+def save_results(df, results_dir=RESULTS_DIR, channels=CHANNELS):
+    """Écrit TOUS les résultats dans `results_dir` et renvoie le chemin du dossier.
+
+    Produit trois fichiers :
+      - scores.csv        : score par canal + fusion + variation marché, par événement
+      - correlations.csv  : corrélation de chaque canal avec le marché
+      - correlations.png  : nuages de points sentiment vs marché
+    """
+    rd = Path(results_dir)
+    rd.mkdir(parents=True, exist_ok=True)
+    df.to_csv(rd / "scores.csv", index=False)
+    correlation_table(df, channels).to_csv(rd / "correlations.csv")
+    plot_correlations(df, rd / "correlations.png", channels)
+    return rd
