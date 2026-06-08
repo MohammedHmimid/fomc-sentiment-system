@@ -1,0 +1,5 @@
+yfinance==0.2.40
+pypdf==4.2.0
+beautifulsoup4==4.12.3
+yt-dlp==2024.5.27
+pandas==2.2.2
