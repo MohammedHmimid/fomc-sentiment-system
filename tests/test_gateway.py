@@ -111,3 +111,42 @@ def test_channel_failure_is_tolerated():
     assert "connect error" in vision_chan["error"]
     # all 4 endpoints were attempted
     assert len(client.calls) == 4
+
+
+def test_fusion_failure_returns_predictable_shape():
+    orch = _load_orch()
+    urls = {"nlp": "http://nlp/analyze", "audio": "http://audio/analyze",
+            "vision": "http://vision/analyze", "fusion": "http://fusion/fuse"}
+
+    def chan(channel, score):
+        return lambda body: {"event_id": body["event_id"], "channel": channel,
+                             "score": score, "label": "x", "raw": {}, "ok": True, "error": None}
+
+    class FusionRaisingClient:
+        """Normal responses for channel URLs; raises RuntimeError for the fusion URL."""
+        def __init__(self, mapping, fusion_url):
+            self.mapping = mapping
+            self.fusion_url = fusion_url
+            self.calls = []
+
+        async def post(self, url, json):
+            self.calls.append(url)
+            if url == self.fusion_url:
+                raise RuntimeError("fusion down")
+            return FakeResponse(self.mapping[url](json))
+
+    client = FusionRaisingClient(
+        mapping={
+            urls["nlp"]: chan("nlp", 0.5),
+            urls["audio"]: chan("audio", 0.3),
+            urls["vision"]: chan("vision", -0.2),
+        },
+        fusion_url=urls["fusion"],
+    )
+
+    # must not raise
+    result = asyncio.run(orch.analyze_event("e", client, urls))
+    assert result["combined_score"] == 0.0
+    assert result["channels_used"] == []
+    assert "error" in result
+    assert "fusion down" in result["error"]

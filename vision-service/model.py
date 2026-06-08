@@ -3,6 +3,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from shared.schema import valence_label
+
 # DeepFace emotions -> valence
 _VALENCE = {"happy": 1.0, "surprise": 0.3, "neutral": 0.0,
             "sad": -1.0, "angry": -1.0, "fear": -0.7, "disgust": -0.7}
@@ -47,5 +49,5 @@ def score_video(mp4_path):
     if not vals:
         raise NoFaceFound("no face detected in any sampled frame")
     valence = max(-1.0, min(1.0, sum(vals) / len(vals)))
-    label = "positive" if valence > 0.15 else "negative" if valence < -0.15 else "neutral"
+    label = valence_label(valence)
     return valence, label, {"frames_with_face": len(vals)}
