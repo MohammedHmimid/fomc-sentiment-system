@@ -1,21 +1,22 @@
+# All five services build from the single root Dockerfile; SERVICE/PORT select which.
 services:
   fusion:
-    build: { context: ., dockerfile: fusion-service/Dockerfile }
+    build: { context: ., dockerfile: Dockerfile, args: { SERVICE: fusion-service, PORT: 8004 } }
     ports: ["8004:8004"]
   nlp:
-    build: { context: ., dockerfile: nlp-service/Dockerfile }
+    build: { context: ., dockerfile: Dockerfile, args: { SERVICE: nlp-service, PORT: 8001 } }
     ports: ["8001:8001"]
     volumes: ["./data/processed:/app/data/processed"]
   audio:
-    build: { context: ., dockerfile: audio-service/Dockerfile }
+    build: { context: ., dockerfile: Dockerfile, args: { SERVICE: audio-service, PORT: 8002 } }
     ports: ["8002:8002"]
     volumes: ["./data/processed:/app/data/processed"]
   vision:
-    build: { context: ., dockerfile: vision-service/Dockerfile }
+    build: { context: ., dockerfile: Dockerfile, args: { SERVICE: vision-service, PORT: 8003 } }
     ports: ["8003:8003"]
     volumes: ["./data/processed:/app/data/processed"]
   gateway:
-    build: { context: ., dockerfile: gateway-service/Dockerfile }
+    build: { context: ., dockerfile: Dockerfile, args: { SERVICE: gateway-service, PORT: 8000 } }
     ports: ["8000:8000"]
     environment:
       NLP_URL: http://nlp:8001
