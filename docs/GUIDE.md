@@ -40,13 +40,20 @@ curl -X POST localhost:8000/analyze -H 'content-type: application/json' \
      -d '{"event_id":"2023-03-22"}'
 ```
 
-## 3. Le rapport
+## 3. L'interface de test (navigateur)
+
+Les services démarrés, ouvrir **http://localhost:8000/**. Trois onglets :
+*Analyser un événement* (analyse multimodale en direct, 1–4 min sur CPU),
+*Texte libre* (score NLP instantané), *Corrélations* (table + graphique de `results/`).
+Pour arrêter les services : `Ctrl+C`, ou `pkill -9 -f run_all.py; pkill -9 -f "uvicorn main:app"`.
+
+## 4. Le rapport (alternative au notebook)
 
 Ouvrir `report.ipynb` (depuis la racine du dépôt) et exécuter les cellules : il interroge la
 gateway pour chaque événement, affiche la table de corrélation et sauvegarde les nuages de points
 dans `report_correlations.png`. La logique d'analyse est dans `analysis.py` (réutilisée par les tests).
 
-## 4. Qui fait quoi (répartition possible)
+## 5. Qui fait quoi (répartition possible)
 
 | Domaine | Fichiers | Indépendant ? |
 |---------|----------|----------------|
@@ -62,14 +69,14 @@ dans `report_correlations.png`. La logique d'analyse est dans `analysis.py` (ré
 Le **contrat partagé** est `shared/schema.py` (`ChannelScore`, `FusionResult`). Tant qu'on le
 respecte, chaque canal se développe et se teste isolément.
 
-## 5. Workflow de contribution
+## 6. Workflow de contribution
 
 1. Créer une branche : `git checkout -b feat/mon-sujet`
 2. Écrire le test d'abord (TDD), puis le code, jusqu'à ce que `python -m pytest -q` passe.
 3. Commits clairs en *conventional commits* : `feat: …`, `fix: …`, `docs: …`, `test: …`.
 4. Ouvrir une *pull request* vers `main`.
 
-## 6. Conventions
+## 7. Conventions
 
 - **Score** : valence `∈ [-1, 1]` sur le même axe pour tous les canaux (−1 négatif … +1 positif).
 - **Imports paresseux** : ne jamais importer `transformers`/`torch`/`deepface`/`cv2` au niveau
@@ -78,7 +85,7 @@ respecte, chaque canal se développe et se teste isolément.
 - **Tests sans réseau ni modèle** : on simule (`monkeypatch`) la fonction de score et le client HTTP.
 - **GPU** : ne pas coder `cuda` en dur, utiliser `shared/device.py` (`get_device()`).
 
-## 7. Dépannage
+## 8. Dépannage
 
 | Symptôme | Cause probable | Solution |
 |----------|----------------|----------|

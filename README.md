@@ -11,6 +11,38 @@ orchestrés par une *gateway* et déployables via Docker Compose (ou en local/Co
 📄 Documentation détaillée : [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) ·
 [`docs/GUIDE.md`](docs/GUIDE.md) (guide de l'équipe)
 
+## 🚀 Démarrage rapide (local, sans Docker)
+
+```bash
+# 1. Se placer à la racine du projet
+cd fomc-sentiment-system
+
+# 2. Installer les dépendances (les 5 services + données)
+pip install -r nlp-service/requirements.txt -r audio-service/requirements.txt \
+            -r vision-service/requirements.txt -r gateway-service/requirements.txt \
+            -r fusion-service/requirements.txt -r data/requirements.txt
+
+# 3. Préparer les données (télécharge vidéos/audio/transcriptions + S&P 500)
+python data/prepare_data.py
+
+# 4. Démarrer les 5 services (laisser ce terminal ouvert ; Ctrl+C pour arrêter)
+python run_all.py
+```
+
+5. Ouvrir l'interface dans un navigateur : **http://localhost:8000/**
+
+Dans l'interface : *Texte libre* et *Corrélations* sont instantanés ; *Analyser un événement*
+lance les 3 modèles en direct (**1 à 4 min sur CPU**, davantage au premier lancement le temps de
+télécharger les modèles). Sans navigateur, on peut aussi appeler la gateway en ligne de commande :
+
+```bash
+curl -X POST localhost:8000/analyze -H 'content-type: application/json' -d '{"event_id":"2023-03-22"}'
+python run_report.py     # régénère le dossier results/ (scores + corrélations + graphique)
+```
+
+> GPU détecté automatiquement (`shared/device.py`) : `cuda` si disponible, sinon `cpu`.
+> Port déjà utilisé ? `pkill -9 -f run_all.py; pkill -9 -f "uvicorn main:app"`.
+
 ## Architecture en bref
 
 ```
