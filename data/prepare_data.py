@@ -23,7 +23,8 @@ def prepare_event(ev):
 
     # 1. video via yt-dlp
     if not video.exists():
-        _run(["yt-dlp", "-f", "mp4", "-o", str(video), ev["video_url"]])
+        _run(["yt-dlp", "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+              "--merge-output-format", "mp4", "-o", str(video), ev["video_url"]])
     # 2. audio via ffmpeg (16kHz mono — what wav2vec2 expects)
     if not audio.exists():
         _run(["ffmpeg", "-y", "-i", str(video), "-ac", "1", "-ar", "16000", str(audio)])
@@ -31,18 +32,19 @@ def prepare_event(ev):
     tr = out / "transcript.txt"
     if not tr.exists():
         _download_transcript(ev["transcript_url"], tr)
-    # 4. market window: day-of to day-after
-    day = datetime.fromisoformat(ev["fomc_datetime"]).date()
-    df = fetch_market_window(start=str(day), end=str(day + timedelta(days=3)))
-    df.to_csv(out / "market.csv")
-    signal = compute_market_signal(df)
-    (out / "market_signal.json").write_text(json.dumps({"signal_pct": signal}))
-    print(f"  market signal: {signal}")
+    # 4. market window: day-of to day-after (idempotent: skip if already fetched)
+    if not (out / "market_signal.json").exists():
+        day = datetime.fromisoformat(ev["fomc_datetime"]).date()
+        df = fetch_market_window(start=str(day), end=str(day + timedelta(days=3)))
+        df.to_csv(out / "market.csv")
+        signal = compute_market_signal(df)
+        (out / "market_signal.json").write_text(json.dumps({"signal_pct": signal}))
+        print(f"  market signal: {signal}")
 
 
 def _download_transcript(url, dest):
     import urllib.request
-    raw = dest.with_suffix(".pdf" if url.endswith(".pdf") else ".html")
+    raw = dest.with_suffix(".pdf" if url.split("?")[0].endswith(".pdf") else ".html")
     urllib.request.urlretrieve(url, raw)
     if raw.suffix == ".pdf":
         from pypdf import PdfReader

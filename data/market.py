@@ -1,7 +1,13 @@
 def compute_market_signal(prices):
     """Percentage change in Close across the window. `prices` is a DataFrame with a 'Close' column.
     Returns float percent, or None if insufficient data."""
-    closes = list(prices["Close"]) if "Close" in prices else []
+    if "Close" not in prices:
+        return None
+    close = prices["Close"]
+    # a single-ticker yfinance frame can yield a 1-col DataFrame; collapse to a Series
+    if hasattr(close, "squeeze"):
+        close = close.squeeze()
+    closes = list(close)
     if len(closes) < 2:
         return None
     first, last = float(closes[0]), float(closes[-1])
@@ -13,4 +19,4 @@ def compute_market_signal(prices):
 def fetch_market_window(ticker="^GSPC", start=None, end=None):
     """Download daily prices for [start, end] inclusive. Returns a DataFrame."""
     import yfinance as yf
-    return yf.download(ticker, start=start, end=end, progress=False)
+    return yf.download(ticker, start=start, end=end, progress=False, multi_level_index=False)
