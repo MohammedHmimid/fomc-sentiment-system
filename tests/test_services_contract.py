@@ -66,3 +66,28 @@ def test_audio_analyze_mocks_model(monkeypatch, tmp_path):
     assert body["channel"] == "audio"
     assert body["score"] == 0.4
     assert body["ok"] is True
+
+
+def test_vision_analyze_success(monkeypatch, tmp_path):
+    main = _load_main("vision-service")
+    monkeypatch.setattr(main, "score_video", lambda mp4: (0.2, "positive", {"frames": 5}))
+    proc = tmp_path / "2023-03-22"; proc.mkdir()
+    (proc / "video.mp4").write_bytes(b"\x00")
+    monkeypatch.setattr(main, "DATA_DIR", tmp_path)
+    from fastapi.testclient import TestClient
+    r = TestClient(main.app).post("/analyze", json={"event_id": "2023-03-22"})
+    assert r.json()["score"] == 0.2 and r.json()["ok"] is True
+
+
+def test_vision_degrades_gracefully_on_no_face(monkeypatch, tmp_path):
+    main = _load_main("vision-service")
+    def _boom(mp4):
+        raise main.NoFaceFound("no face in any frame")
+    monkeypatch.setattr(main, "score_video", _boom)
+    proc = tmp_path / "2023-03-22"; proc.mkdir()
+    (proc / "video.mp4").write_bytes(b"\x00")
+    monkeypatch.setattr(main, "DATA_DIR", tmp_path)
+    from fastapi.testclient import TestClient
+    body = TestClient(main.app).post("/analyze", json={"event_id": "2023-03-22"}).json()
+    assert body["ok"] is False
+    assert "no face" in body["error"]
