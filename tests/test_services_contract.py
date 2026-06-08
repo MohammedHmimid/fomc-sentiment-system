@@ -50,3 +50,19 @@ def test_nlp_analyze_mocks_model(monkeypatch, tmp_path):
     assert body["channel"] == "nlp"
     assert body["score"] == -0.7
     assert body["ok"] is True
+
+
+def test_audio_analyze_mocks_model(monkeypatch, tmp_path):
+    main = _load_main("audio-service")
+    monkeypatch.setattr(main, "score_audio", lambda wav: (0.4, "positive", {"emotion": "hap"}))
+    proc = tmp_path / "2023-03-22"; proc.mkdir()
+    (proc / "audio.wav").write_bytes(b"RIFF....")  # presence only; model mocked
+    monkeypatch.setattr(main, "DATA_DIR", tmp_path)
+
+    from fastapi.testclient import TestClient
+    client = TestClient(main.app)
+    r = client.post("/analyze", json={"event_id": "2023-03-22"})
+    body = r.json()
+    assert body["channel"] == "audio"
+    assert body["score"] == 0.4
+    assert body["ok"] is True
