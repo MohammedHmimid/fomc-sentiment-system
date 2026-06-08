@@ -30,3 +30,23 @@ def test_fusion_health_and_combine():
     body = r.json()
     assert body["channels_used"] == ["nlp", "audio"]
     assert "combined_score" in body
+
+
+def test_nlp_analyze_mocks_model(monkeypatch, tmp_path):
+    main = _load_main("nlp-service")
+    # mock the model scoring so no FinBERT download happens
+    monkeypatch.setattr(main, "score_text", lambda text: (-0.7, "negative", {"prob": 0.7}))
+    # write a fake transcript the service will read
+    proc = tmp_path / "2023-03-22"
+    proc.mkdir()
+    (proc / "transcript.txt").write_text("rates will rise")
+    monkeypatch.setattr(main, "DATA_DIR", tmp_path)
+
+    from fastapi.testclient import TestClient
+    client = TestClient(main.app)
+    assert client.get("/health").json()["status"] == "ok"
+    r = client.post("/analyze", json={"event_id": "2023-03-22"})
+    body = r.json()
+    assert body["channel"] == "nlp"
+    assert body["score"] == -0.7
+    assert body["ok"] is True
