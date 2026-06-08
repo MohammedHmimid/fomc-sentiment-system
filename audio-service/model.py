@@ -3,6 +3,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from shared.device import get_device
+from shared.schema import valence_label
 
 # superb emotion labels -> valence
 _VALENCE = {"hap": 1.0, "neu": 0.0, "sad": -1.0, "ang": -1.0}
@@ -25,5 +26,5 @@ def score_audio(wav_path: str):
     preds = pipe(str(wav_path), top_k=4)  # [{label, score}, ...]
     valence = sum(_VALENCE.get(p["label"], 0.0) * float(p["score"]) for p in preds)
     valence = max(-1.0, min(1.0, valence))
-    label = "positive" if valence > 0.15 else "negative" if valence < -0.15 else "neutral"
+    label = valence_label(valence)
     return valence, label, {"preds": preds}

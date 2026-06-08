@@ -18,14 +18,16 @@ def _sample_frames(mp4_path, every_n_seconds=10, max_frames=12):
     fps = cap.get(cv2.CAP_PROP_FPS) or 25
     step = int(fps * every_n_seconds)
     frames, idx = [], 0
-    while len(frames) < max_frames:
-        ok, frame = cap.read()
-        if not ok:
-            break
-        if idx % max(step, 1) == 0:
-            frames.append(frame)
-        idx += 1
-    cap.release()
+    try:
+        while len(frames) < max_frames:
+            ok, frame = cap.read()
+            if not ok:
+                break
+            if idx % max(step, 1) == 0:
+                frames.append(frame)
+            idx += 1
+    finally:
+        cap.release()
     return frames
 
 

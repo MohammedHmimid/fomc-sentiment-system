@@ -6,8 +6,13 @@ async def analyze_event(event_id, client, urls):
     payload = {"event_id": event_id}
 
     async def call(channel):
-        resp = await client.post(urls[channel], json=payload)
-        return resp.json()
+        try:
+            resp = await client.post(urls[channel], json=payload)
+            resp.raise_for_status()
+            return resp.json()
+        except Exception as exc:
+            return {"event_id": event_id, "channel": channel, "score": 0.0,
+                    "label": "neutral", "raw": {}, "ok": False, "error": str(exc)}
 
     channels = await asyncio.gather(call("nlp"), call("audio"), call("vision"))
 
